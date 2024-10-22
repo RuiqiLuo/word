@@ -111,9 +111,16 @@
         let isWordListVisible = false;
         let isReviewVisible = false;
 
-        function addWord() {
+        async function addWord() {
             const word = document.getElementById('word').value.toLowerCase();
-            const meaning = document.getElementById('meaning').value;
+            const data = await fetch('https://www.iciba.com/_next/data/uGKktS1eP3HVzdLazkkJY/word.json?w=' + word);
+            let json = await data.json();
+            let meanings = json.pageProps.initialReduxState.word.wordInfo.collins[0].entry;
+            let meaning = [];
+            for (let item of meanings) {
+                meaning.push(`[${item.posp}] ${item.def.replaceAll(/<.+?>/g, '')}`);
+            }
+            meaning = meaning.join('\n');
             const existingWord = words.find(w => w.word === word);
 
             if (word && meaning) {
