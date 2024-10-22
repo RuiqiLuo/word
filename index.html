@@ -113,7 +113,7 @@
 
         async function addWord() {
             const word = document.getElementById('word').value.toLowerCase();
-            const data = await fetch('https://www.iciba.com/_next/data/uGKktS1eP3HVzdLazkkJY/word.json?w=' + word);
+            const data = await fetch('https://bobliu.tech/lrq/word.php?word=' + word);
             let json = await data.json();
             let meanings = json.pageProps.initialReduxState.word.wordInfo.collins[0].entry;
             let meaning = [];
