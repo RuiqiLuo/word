@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词存储应用</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 15px 20px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .word-list,
+        .review-list {
+            margin-top: 20px;
+            text-align: left;
+            display: none;
+        }
+
+        /* 媒体查询，针对小屏幕设备 */
+        @media screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+                border-radius: 5px;
+            }
+
+            input,
+            select {
+                padding: 10px;
+                font-size: 16px;
+            }
+
+            button {
+                padding: 10px 15px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>单词存储应用</h2>
+        <div id="addWordSection">
+            <input type="text" id="word" placeholder="输入单词">
+            <input type="text" id="meaning" placeholder="输入词义">
+            <button onclick="addWord()">添加单词</button>
+        </div>
+        <button onclick="toggleWordList()" id="toggleListButton">显示单词列表</button>
+        <select id="sortOption" onchange="sortWords()" style="display: none;">
+            <option value="alphabetical">按字母排序</option>
+            <option value="frequency">按错误频率排序</option>
+        </select>
+        <div class="word-list" id="wordList">
+            <h3>单词列表</h3>
+            <ul></ul>
+        </div>
+        <button onclick="generateReviewDates()" id="reviewButton" style="display: none;">复习单词</button>
+        <div class="review-list" id="reviewList">
+            <h3>复习单词</h3>
+            <ul></ul>
+        </div>
+        <button onclick="goBack()" id="backButton" style="display: none;">返回</button>
+    </div>
+
+    <script>
+        let words = JSON.parse(localStorage.getItem('words')) || [];
+        let reviewedWords = JSON.parse(localStorage.getItem('reviewedWords')) || {};
+        let isWordListVisible = false;
+        let isReviewVisible = false;
+
+        function addWord() {
+            const word = document.getElementById('word').value.toLowerCase();
+            const meaning = document.getElementById('meaning').value;
+            const existingWord = words.find(w => w.word === word);
+
+            if (word && meaning) {
+                if (existingWord) {
+                    existingWord.errorFrequency += 1;
+                    alert('单词更新成功！');
+                } else {
+                    const timestamp = new Date().toISOString();
+                    const errorFrequency = 1;
+                    words.push({ word, meaning, timestamp, errorFrequency });
+                    alert('单词添加成功！');
+                }
+                localStorage.setItem('words', JSON.stringify(words));
+                document.getElementById('word').value = '';
+                document.getElementById('meaning').value = '';
+                updateWordList();
+            } else {
+                alert('请输入单词和词义！');
+            }
+        }
+
+        function toggleWordList() {
+            if (!isWordListVisible) {
+                document.getElementById('addWordSection').style.display = 'none';
+                document.getElementById('sortOption').style.display = 'block';
+                document.getElementById('wordList').style.display = 'block';
+                document.getElementById('toggleListButton').textContent = '隐藏单词列表';
+                document.getElementById('backButton').style.display = 'block';
+                isWordListVisible = true;
+                updateWordList();
+            } else {
+                document.getElementById('addWordSection').style.display = 'block';
+                document.getElementById('sortOption').style.display = 'none';
+                document.getElementById('wordList').style.display = 'none';
+                document.getElementById('toggleListButton').textContent = '显示单词列表';
+                document.getElementById('backButton').style.display = 'none';
+                isWordListVisible = false;
+            }
+        }
+
+        function sortWords() {
+            updateWordList();
+        }
+
+        function updateWordList() {
+            const sortOption = document.getElementById('sortOption').value;
+            let sortedWords = [...words];
+
+            if (sortOption === 'alphabetical') {
+                sortedWords.sort((a, b) => a.word.localeCompare(b.word));
+            } else if (sortOption === 'frequency') {
+                sortedWords.sort((a, b) => b.errorFrequency - a.errorFrequency);
+            }
+
+            const wordListUl = document.getElementById('wordList').querySelector('ul');
+            wordListUl.innerHTML = '';
+            sortedWords.forEach(word => {
+                const li = document.createElement('li');
+                li.textContent = `${word.word} - ${word.meaning} (错误次数: ${word.errorFrequency})`;
+                wordListUl.appendChild(li);
+            });
+        }
+
+        function generateReviewDates() {
+            if (!isReviewVisible) {
+                document.getElementById('addWordSection').style.display = 'none';
+                document.getElementById('reviewButton').style.display = 'block';
+                document.getElementById('reviewList').style.display = 'block';
+                document.getElementById('toggleListButton').style.display = 'none';
+                document.getElementById('backButton').style.display = 'block';
+                isReviewVisible = true;
+            } else {
+                document.getElementById('addWordSection').style.display = 'block';
+                document.getElementById('reviewButton').style.display = 'none';
+                document.getElementById('reviewList').style.display = 'none';
+                document.getElementById('toggleListButton').style.display = 'block';
+                document.getElementById('backButton').style.display = 'none';
+                isReviewVisible = false;
+            }
+            getReviewDates();
+        }
+
+        function getReviewDates() {
+            const now = new Date();
+            const reviewDates = [now.toISOString().split('T')[0]];
+            const reviewListUl = document.getElementById('reviewList').querySelector('ul');
+            reviewListUl.innerHTML = '';
+
+            reviewDates.forEach(date => {
+                const filteredWords = words.filter(word =>
+                    !reviewedWords[word.word] &&
+                    word.errorFrequency > 0
+                );
+
+                const li = document.createElement('li');
+                li.innerHTML = `${date}: `;
+                filteredWords.forEach(word => {
+                    const span = document.createElement('span');
+                    span.textContent = `${word.word} `;
+                    const button = document.createElement('button');
+                    button.textContent = '已掌握';
+                    button.onclick = () => markAsMastered(word.word);
+                    span.appendChild(button);
+                    li.appendChild(span);
+                });
+                if (filteredWords.length > 0) reviewListUl.appendChild(li);
+            });
+        }
+
+        function markAsMastered(word) {
+            reviewedWords[word] = true;
+            localStorage.setItem('reviewedWords', JSON.stringify(reviewedWords));
+            updateWordList();
+            getReviewDates();
+        }
+
+        function goBack() {
+            document.getElementById('addWordSection').style.display = 'block';
+            document.getElementById('sortOption').style.display = 'none';
+            document.getElementById('wordList').style.display = 'none';
+            document.getElementById('reviewList').style.display = 'none';
+            document.getElementById('toggleListButton').textContent = '显示单词列表';
+            document.getElementById('toggleListButton').style.display = 'block';
+            document.getElementById('backButton').style.display = 'none';
+            document.getElementById('reviewButton').style.display = 'none';
+            isWordListVisible = false;
+            isReviewVisible = false;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateWordList();
+            getReviewDates();
+        });
+    </script>
+</body>
+
+</html>
