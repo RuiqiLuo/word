@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>单词存储应用</title>
+    <title>高效单词本</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f5f5f5;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -20,7 +20,7 @@
         .container {
             background-color: white;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 500px;
@@ -30,26 +30,27 @@
         input,
         select {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             margin: 10px 0;
-            border-radius: 5px;
+            border-radius: 8px;
             border: 1px solid #ccc;
             box-sizing: border-box;
         }
 
         button {
-            padding: 15px 20px;
+            padding: 10px 15px;
             margin: 10px 0;
             border: none;
-            border-radius: 5px;
-            background-color: #4CAF50;
+            border-radius: 8px;
+            background-color: #007AFF;
             color: white;
             cursor: pointer;
             font-size: 16px;
         }
 
-        button:hover {
-            background-color: #45a049;
+        button:hover,
+        button:active {
+            background-color: #0056b3;
         }
 
         .word-list,
@@ -63,7 +64,7 @@
         @media screen and (max-width: 600px) {
             .container {
                 padding: 10px;
-                border-radius: 5px;
+                border-radius: 8px;
             }
 
             input,
@@ -77,15 +78,80 @@
                 font-size: 16px;
             }
         }
+
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .word {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .meaning {
+            font-size: 14px;
+        }
+
+        .delete-button {
+            background-color: #FF3B30;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover,
+        .delete-button:active {
+            background-color: #e63327;
+        }
+
+        .page-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .page-button {
+            background-color: #999;
+            color: white;
+            padding: 8px 12px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        .page-button:hover,
+        .page-button:active {
+            background-color: #666;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+        }
+
+        /* 错误次数加粗 */
+        .error-frequency {
+            font-weight: bold;
+        }
+
+        .centered-word-list {
+            text-align: center;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h2>单词存储应用</h2>
+        <h2>BorChain</h2>
         <div id="addWordSection">
             <input type="text" id="word" placeholder="输入单词">
-            <input type="text" id="meaning" placeholder="输入词义">
             <button onclick="addWord()">添加单词</button>
         </div>
         <button onclick="toggleWordList()" id="toggleListButton">显示单词列表</button>
@@ -95,7 +161,12 @@
         </select>
         <div class="word-list" id="wordList">
             <h3>单词列表</h3>
-            <ul></ul>
+            <ul class="centered-word-list"></ul>
+            <div class="page-controls">
+                <button class="page-button" onclick="prevPage()">上一页</button>
+                <select id="pageSelect" onchange="goToPage()"></select>
+                <button class="page-button" onclick="nextPage()">下一页</button>
+            </div>
         </div>
         <button onclick="generateReviewDates()" id="reviewButton" style="display: none;">复习单词</button>
         <div class="review-list" id="reviewList">
@@ -110,6 +181,8 @@
         let reviewedWords = JSON.parse(localStorage.getItem('reviewedWords')) || {};
         let isWordListVisible = false;
         let isReviewVisible = false;
+        let currentPage = 1;
+        const wordsPerPage = 10;
 
         async function addWord() {
             const word = document.getElementById('word').value.toLowerCase();
@@ -118,12 +191,12 @@
             let meanings = json.pageProps.initialReduxState.word.wordInfo.collins[0].entry;
             let meaning = [];
             for (let item of meanings) {
-                meaning.push(`[${item.posp}] ${item.def.replaceAll(/<.+?>/g, '')}`);
+                meaning.push(`[${item.posp}] ${item.tran}`);
             }
             meaning = meaning.join('\n');
             const existingWord = words.find(w => w.word === word);
 
-            if (word && meaning) {
+            if (word) {
                 if (existingWord) {
                     existingWord.errorFrequency += 1;
                     alert('单词更新成功！');
@@ -135,10 +208,9 @@
                 }
                 localStorage.setItem('words', JSON.stringify(words));
                 document.getElementById('word').value = '';
-                document.getElementById('meaning').value = '';
                 updateWordList();
             } else {
-                alert('请输入单词和词义！');
+                alert('请输入单词！');
             }
         }
 
@@ -166,6 +238,8 @@
         }
 
         function updateWordList() {
+            const startIndex = (currentPage - 1) * wordsPerPage;
+            const endIndex = startIndex + wordsPerPage;
             const sortOption = document.getElementById('sortOption').value;
             let sortedWords = [...words];
 
@@ -177,11 +251,46 @@
 
             const wordListUl = document.getElementById('wordList').querySelector('ul');
             wordListUl.innerHTML = '';
-            sortedWords.forEach(word => {
+            sortedWords.slice(startIndex, endIndex).forEach(word => {
                 const li = document.createElement('li');
-                li.textContent = `${word.word} - ${word.meaning} (错误次数: ${word.errorFrequency})`;
+                const wordItemDiv = document.createElement('div');
+                wordItemDiv.classList.add('word-item');
+                const wordSpan = document.createElement('span');
+                wordSpan.classList.add('word');
+                wordSpan.textContent = word.word;
+                const meaningSpan = document.createElement('span');
+                meaningSpan.classList.add('meaning');
+                meaningSpan.textContent = ` - ${word.meaning}`;
+                const errorFrequencySpan = document.createElement('span');
+                errorFrequencySpan.classList.add('error-frequency');
+                errorFrequencySpan.textContent = ` (错误次数: ${word.errorFrequency})`;
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add('delete-button');
+                deleteButton.textContent = '删除';
+                deleteButton.onclick = () => deleteWord(word.word);
+                wordItemDiv.appendChild(wordSpan);
+                wordItemDiv.appendChild(meaningSpan);
+                wordItemDiv.appendChild(errorFrequencySpan);
+                wordItemDiv.appendChild(deleteButton);
+                li.appendChild(wordItemDiv);
                 wordListUl.appendChild(li);
             });
+
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = endIndex >= words.length;
+
+            const totalPages = Math.ceil(words.length / wordsPerPage);
+            const pageSelect = document.getElementById('pageSelect');
+            pageSelect.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                if (i === currentPage) {
+                    option.selected = true;
+                }
+                pageSelect.appendChild(option);
+            }
         }
 
         function generateReviewDates() {
@@ -248,6 +357,36 @@
             document.getElementById('reviewButton').style.display = 'none';
             isWordListVisible = false;
             isReviewVisible = false;
+            if (document.getElementById('wordList').style.display === 'none') {
+                document.querySelector('.centered-word-list').style.textAlign = 'center';
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateWordList();
+            }
+        }
+
+        function nextPage() {
+            const startIndex = (currentPage - 1) * wordsPerPage;
+            const endIndex = startIndex + wordsPerPage;
+            if (endIndex < words.length) {
+                currentPage++;
+                updateWordList();
+            }
+        }
+
+        function goToPage() {
+            currentPage = parseInt(document.getElementById('pageSelect').value);
+            updateWordList();
+        }
+
+        function deleteWord(wordToDelete) {
+            words = words.filter(word => word.word !== wordToDelete);
+            localStorage.setItem('words', JSON.stringify(words));
+            updateWordList();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
