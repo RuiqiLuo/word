@@ -102,6 +102,8 @@
             border: none;
             padding: 5px 10px;
             cursor: pointer;
+            font-size: 14px;
+            border-radius: 5px;
         }
 
         .delete-button:hover,
@@ -144,12 +146,29 @@
         .centered-word-list {
             text-align: center;
         }
+
+        /* 新的切换释义按钮样式 */
+        .toggle-definition-button {
+            background-color: #888888;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+
+        .toggle-definition-button:hover,
+        .toggle-definition-button:active {
+            background-color: #666666;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h2>BorChain</h2>
+        <img src="image/BorChain.png" alt="BorChain Logo" style="width: 100px; height: auto; margin-bottom: 20px;">
         <div id="addWordSection">
             <input type="text" id="word" placeholder="输入单词">
             <button onclick="addWord()">添加单词</button>
@@ -183,6 +202,7 @@
         let isReviewVisible = false;
         let currentPage = 1;
         const wordsPerPage = 10;
+        let currentlyShowingEnglishDefinition = false;
 
         async function addWord() {
             const word = document.getElementById('word').value.toLowerCase();
@@ -190,10 +210,13 @@
             let json = await data.json();
             let meanings = json.pageProps.initialReduxState.word.wordInfo.collins[0].entry;
             let meaning = [];
+            let defMeaning = [];
             for (let item of meanings) {
                 meaning.push(`[${item.posp}] ${item.tran}`);
+                defMeaning.push(item.def.replace(/<b>/g, '').replace(/<\/b>/g, ''));
             }
             meaning = meaning.join('\n');
+            defMeaning = defMeaning.join('\n');
             const existingWord = words.find(w => w.word === word);
 
             if (word) {
@@ -203,7 +226,7 @@
                 } else {
                     const timestamp = new Date().toISOString();
                     const errorFrequency = 1;
-                    words.push({ word, meaning, timestamp, errorFrequency });
+                    words.push({ word, meaning, defMeaning, timestamp, errorFrequency });
                     alert('单词添加成功！');
                 }
                 localStorage.setItem('words', JSON.stringify(words));
@@ -261,16 +284,21 @@
                 const meaningSpan = document.createElement('span');
                 meaningSpan.classList.add('meaning');
                 meaningSpan.textContent = ` - ${word.meaning}`;
-                const errorFrequencySpan = document.createElement('span');
-                errorFrequencySpan.classList.add('error-frequency');
-                errorFrequencySpan.textContent = ` (错误次数: ${word.errorFrequency})`;
+                const defMeaningSpan = document.createElement('span');
+                defMeaningSpan.classList.add('def-meaning');
+                defMeaningSpan.textContent = '';
+                const toggleDefButton = document.createElement('button');
+                toggleDefButton.classList.add('toggle-definition-button');
+                toggleDefButton.textContent = currentlyShowingEnglishDefinition ? '显示中文释义' : '显示英文释义';
+                toggleDefButton.onclick = () => toggleDefMeaning(wordItemDiv, word.defMeaning, meaningSpan);
                 const deleteButton = document.createElement('button');
                 deleteButton.classList.add('delete-button');
                 deleteButton.textContent = '删除';
                 deleteButton.onclick = () => deleteWord(word.word);
                 wordItemDiv.appendChild(wordSpan);
                 wordItemDiv.appendChild(meaningSpan);
-                wordItemDiv.appendChild(errorFrequencySpan);
+                wordItemDiv.appendChild(defMeaningSpan);
+                wordItemDiv.appendChild(toggleDefButton);
                 wordItemDiv.appendChild(deleteButton);
                 li.appendChild(wordItemDiv);
                 wordListUl.appendChild(li);
@@ -291,6 +319,25 @@
                 }
                 pageSelect.appendChild(option);
             }
+        }
+
+        function toggleDefMeaning(wordItemDiv, defMeaning, meaningSpan) {
+            const defMeaningSpan = wordItemDiv.querySelector('.def-meaning');
+            const defMeaningSentences = defMeaning.split(/(?<=[.!?])\s+(?=[A-Z])/);
+            let numberedDefMeaning = '';
+            defMeaningSentences.forEach((sentence, index) => {
+                numberedDefMeaning += `${index + 1}. ${sentence}<br>`;
+            });
+            if (currentlyShowingEnglishDefinition) {
+                defMeaningSpan.innerHTML = numberedDefMeaning;
+                meaningSpan.style.display = 'none';
+            } else {
+                defMeaningSpan.textContent = '';
+                meaningSpan.style.display = 'inline';
+            }
+            currentlyShowingEnglishDefinition = !currentlyShowingEnglishDefinition;
+            const toggleDefButton = wordItemDiv.querySelector('.toggle-definition-button');
+            toggleDefButton.textContent = currentlyShowingEnglishDefinition ? '显示中文释义' : '显示英文释义';
         }
 
         function generateReviewDates() {
